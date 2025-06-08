@@ -1,4 +1,4 @@
-// HU1: Crear clase Template
+// LAB 13 (HU1): Crear clase Template - Solo para renderizado
 class Template {
     constructor(titulo, mensaje, hashtag, categoria, autor) {
         this.titulo = titulo;
@@ -9,7 +9,7 @@ class Template {
         this.fechaCreacion = new Date(); // Añadimos fecha automática
     }
 
-    // HU3: Método render - Estado Local
+    // HU3: Método render - Solo renderizado, sin lógica de estado
     render() {
         const div = document.createElement('div');
         div.className = 'bg-gray-50 rounded-lg p-6 border border-gray-200 hover:border-purple-300 transition duration-300 hover:shadow-md template-card';
@@ -79,4 +79,64 @@ class Template {
     getTextoParaCopiar() {
         return `**${this.titulo}**\n\n${this.mensaje}\n\n#${this.hashtag} #${this.categoria}\n\nAutor: ${this.autor}`;
     }
+}
+
+// Función de renderizado global - recibe plantillas desde el store
+function renderPlantillas() {
+    const container = document.getElementById('templates-container');
+    const emptyState = document.getElementById('empty-templates-state');
+    
+    if (!container || !emptyState) return;
+    
+    // Obtener plantillas filtradas desde el store
+    const plantillasFiltradas = window.templateStore.filtrarPlantillas();
+    const todasLasPlantillas = window.templateStore.getPlantillas();
+    const estadoActual = window.templateStore.getState();
+    
+    container.innerHTML = ''; // Limpiar el contenedor
+    
+    if (plantillasFiltradas.length === 0) {
+        if (todasLasPlantillas.length === 0) {
+            emptyState.classList.remove('hidden');
+            container.classList.add('hidden');
+        } else {
+            container.innerHTML = '<div class="text-center py-8 text-gray-500">No se encontraron plantillas con los filtros aplicados.</div>';
+            emptyState.classList.add('hidden');
+            container.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    emptyState.classList.add('hidden');
+    container.classList.remove('hidden');
+    
+    // HU4: Aplicar modo de vista desde el store
+    if (estadoActual.modoVista === 'grilla') {
+        container.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+    } else {
+        container.className = 'space-y-4';
+    }
+    
+    // Renderizar cada plantilla
+    plantillasFiltradas.forEach(plantillaData => {
+        // Crear instancia de Template para renderizado
+        const template = new Template(
+            plantillaData.titulo,
+            plantillaData.mensaje,
+            plantillaData.hashtag,
+            plantillaData.categoria,
+            plantillaData.autor
+        );
+        // Mantener la fecha original
+        template.fechaCreacion = plantillaData.fechaCreacion;
+        
+        const card = template.render();
+        container.appendChild(card);
+    });
+}
+
+// Toggle modo vista - usar el store
+function toggleModoVista() {
+    window.templateStore.cambiarModoVista();
+    renderPlantillas(); // Re-renderizar con el nuevo modo
 }

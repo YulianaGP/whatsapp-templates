@@ -1,27 +1,32 @@
-# Gestor de Plantillas WhatsApp
+# Resumen de los cambios realizados
+Basándome en el código actual y el patrón de Store que he implementado, aquí están los archivos actualizados:
 
-## Clase Template
+## 🏪 store.js (Corregido)
 
-```js
-class Template {
-  constructor(titulo, mensaje, hashtag, categoria, autor) { ... }
-  render() { ... }
-}
-```
+- Agregué todos los métodos necesarios para manejar el estado centralizado.
+- Implementé el patrón **Observer** con `subscribe()` y `notifyListeners()`.
+- Agregué métodos específicos como `filtrarPlantillas()`, `cambiarModoVista()`, etc.
 
-## Propiedades
+## 🎨 template.js (Actualizado)
 
-- **titulo**: Título de la plantilla.  
-- **mensaje**: Mensaje principal.  
-- **hashtag**: Etiqueta temática.  
-- **categoria**: Tipo de plantilla.  
-- **autor**: Quien la creó.  
+- Eliminé toda la lógica de manejo de estado.
+- La clase `Template` ahora **solo renderiza**.
+- `renderPlantillas()` obtiene datos desde `window.templateStore`.
+- `toggleModoVista()` usa el store para cambiar el modo.
 
-## Métodos
+## ⚙️ app.js (Actualizado)
 
-- **render()**: Devuelve un elemento HTML con la representación visual de la plantilla.
+- Todas las operaciones ahora usan `window.templateStore`.
+  - `agregarPlantilla()` → `window.templateStore.agregarPlantilla()`
+  - `eliminarPlantilla()` → `window.templateStore.eliminarPlantilla()`
+  - Los filtros se actualizan con `window.templateStore.actualizarFiltros()`
+- Agregué validaciones para evitar errores si faltan elementos del DOM.
 
-## Estado Global
+## 🔄 Flujo de integración
 
-- **plantillas[]**: Array que contiene todas las plantillas activas.  
-- Las funciones **agregarPlantilla()** y **eliminarPlantilla()** modifican este estado.
+- `store.js` maneja **todo el estado centralizado**.
+- `template.js` **solo renderiza plantillas**.
+- `app.js` coordina las interacciones entre **UI y store**.
+- Después de cada cambio en el store, se **re-renderiza la UI**.
+- ¡El **store centralizado** maneja todo el estado y los demás archivos solo se encargan de **renderizado** y **coordinación de eventos**!
+
