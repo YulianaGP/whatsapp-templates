@@ -4,9 +4,9 @@ class Template {
         this.titulo = titulo;
         this.mensaje = mensaje;
         this.hashtag = hashtag;
-        this.categoria = categoria; // propiedad extra
-        this.autor = autor;         // propiedad extra
-        this.fechaCreacion = new Date(); // Añadimos fecha automática
+        this.categoria = categoria;
+        this.autor = autor;
+        this.fechaCreacion = new Date();
     }
 
     // HU3: Método render - Solo renderizado, sin lógica de estado

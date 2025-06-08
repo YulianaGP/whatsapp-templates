@@ -48,6 +48,108 @@ function agregarEventListeners() {
     });
 }
 
+// MODIFICACIONES PARA app.js - INTEGRAR CON PERSISTENCIA
+
+// 1. Agregar función para manejar el botón "Eliminar Todo" (HU3)
+function agregarBotonEliminarTodo() {
+    // Buscar el contenedor de estadísticas o un lugar apropiado
+    const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-4.gap-4');
+    
+    if (statsContainer) {
+        // Crear botón de eliminar todo
+        const resetButton = document.createElement('div');
+        resetButton.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-center hover:bg-red-100 transition cursor-pointer';
+        resetButton.innerHTML = `
+            <div class="flex flex-col items-center">
+                <i class="fas fa-trash-alt text-red-500 text-2xl mb-2"></i>
+                <p class="text-red-700 font-semibold text-sm">Eliminar Todo</p>
+                <p class="text-red-500 text-xs mt-1">Limpiar todas las plantillas</p>
+            </div>
+        `;
+        
+        // Event listener para confirmar y eliminar
+        resetButton.addEventListener('click', function() {
+            const confirmacion = confirm(
+                '⚠️ ¿Estás seguro de eliminar TODAS las plantillas?\n\n' +
+                'Esta acción no se puede deshacer y eliminará todas las plantillas guardadas tanto en la aplicación como en el almacenamiento local.'
+            );
+            
+            if (confirmacion) {
+                window.persistencia.resetear();
+                renderPlantillas();
+                actualizarEstadisticas();
+                actualizarOpcionesHashtag();
+            }
+        });
+        
+        // Agregar al contenedor de estadísticas
+        statsContainer.appendChild(resetButton);
+    }
+}
+
+// 2. Agregar botones de exportar/importar
+function agregarBotonesImportExport() {
+    // Buscar el área de filtros o crear una nueva sección
+    const filtersSection = document.querySelector('.flex.flex-col.lg\\:flex-row.gap-4.mb-6');
+    
+    if (filtersSection) {
+        const importExportDiv = document.createElement('div');
+        importExportDiv.className = 'flex gap-2 justify-center lg:justify-end';
+        importExportDiv.innerHTML = `
+            <button id="export-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300 flex items-center gap-2 text-sm">
+                <i class="fas fa-download"></i>
+                <span>Exportar</span>
+            </button>
+            <label for="import-file" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300 flex items-center gap-2 text-sm cursor-pointer">
+                <i class="fas fa-upload"></i>
+                <span>Importar</span>
+            </label>
+            <input type="file" id="import-file" accept=".json" class="hidden">
+        `;
+        
+        filtersSection.appendChild(importExportDiv);
+        
+        // Event listeners
+        document.getElementById('export-btn').addEventListener('click', function() {
+            window.persistencia.exportar();
+        });
+        
+        document.getElementById('import-file').addEventListener('change', function(e) {
+            const archivo = e.target.files[0];
+            if (archivo) {
+                window.persistencia.importar(archivo);
+                // Limpiar input
+                e.target.value = '';
+            }
+        });
+    }
+}
+
+// 3. Función para mostrar estadísticas de almacenamiento
+function mostrarEstadisticasStorage() {
+    const stats = window.persistencia.estadisticas();
+    console.log('📊 Estadísticas de Almacenamiento:', stats);
+    
+    // Opcional: mostrar en la UI
+    const storageInfo = document.createElement('div');
+    storageInfo.className = 'text-xs text-gray-500 mt-2 text-center';
+    storageInfo.innerHTML = `
+        💾 Almacenado: ${stats.tamañoLegible} | 📝 ${stats.plantillas} plantillas guardadas
+    `;
+    
+    // Agregar al final del contenedor principal
+    const container = document.querySelector('.container');
+    if (container && stats.disponible) {
+        const existingInfo = container.querySelector('.storage-info');
+        if (existingInfo) {
+            existingInfo.remove();
+        }
+        storageInfo.classList.add('storage-info');
+        container.appendChild(storageInfo);
+    }
+}
+
+
 // Función para cargar plantilla en formulario para edición
 function cargarPlantillaEnFormulario(template) {
     document.getElementById('template-title').value = template.titulo;
@@ -183,8 +285,14 @@ function limpiarFormulario() {
     }
 }
 
-// Inicialización cuando se carga el DOM
+// NUEVA INICIALIZACIÓN CON PERSISTENCIA
 document.addEventListener('DOMContentLoaded', function() {
+    // ========== INICIALIZAR PERSISTENCIA PRIMERO ==========
+    console.log('🚀 Inicializando aplicación con persistencia...');
+    
+    // Inicializar sistema de persistencia
+    const persistenciaInicializada = window.persistencia.inicializar();
+    
     // Referencias a elementos del DOM
     const inputTitle = document.getElementById('template-title');
     const inputHashtag = document.getElementById('template-hashtag');
@@ -196,7 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewContent = document.getElementById('preview-content');
     const charCount = document.getElementById('char-count');
     
-    // Event Listener para guardar plantilla
+    // ========== EVENT LISTENERS ==========
+    // Event Listener para guardar plantilla (MODIFICADO)
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
             const titulo = inputTitle?.value.trim() || '';
@@ -224,15 +333,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 mensaje,
                 hashtags[0].replace('#', ''),
                 categoria,
-                'Usuario' // Por ahora hardcodeado
+                'Usuario'
             );
             
-            // Usar el store para agregar la plantilla
+            // Usar el store para agregar la plantilla (auto-guardado integrado)
             window.templateStore.agregarPlantilla(nuevaPlantilla);
             renderPlantillas();
             actualizarEstadisticas();
             actualizarOpcionesHashtag();
             limpiarFormulario();
+            mostrarEstadisticasStorage(); // Actualizar stats de storage
             mostrarNotificacion('Plantilla guardada correctamente', 'success');
         });
     }
@@ -296,9 +406,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Cargar plantillas de ejemplo si no hay plantillas guardadas
+    // ========== CARGAR PLANTILLAS DE EJEMPLO SI ES NECESARIO ==========
     const plantillasExistentes = window.templateStore.getPlantillas();
-    if (plantillasExistentes.length === 0) {
+    
+    // Solo agregar ejemplos si no hay plantillas Y no se cargaron desde localStorage
+    if (plantillasExistentes.length === 0 && !persistenciaInicializada) {
+        console.log('📝 Cargando plantillas de ejemplo...');
+        
         const ejemplo1 = new Template(
             'Mensaje de Bienvenida', 
             '¡Hola {nombre}! 👋\n\nBienvenido/a a {empresa}. Estamos emocionados de tenerte como parte de nuestra comunidad.\n\nSi tienes alguna pregunta, no dudes en contactarnos. ¡Estamos aquí para ayudarte!\n\nSaludos cordiales,\nEl equipo de {empresa}', 
@@ -328,15 +442,20 @@ document.addEventListener('DOMContentLoaded', function() {
         window.templateStore.agregarPlantilla(ejemplo3);
     }
     
-    // Renderizar estado inicial
+    // ========== RENDERIZAR ESTADO INICIAL ==========
     renderPlantillas();
     actualizarEstadisticas();
     actualizarOpcionesHashtag();
+    mostrarEstadisticasStorage();
     
-    // Agregar event listeners después del renderizado inicial
+    // Agregar botones adicionales
     setTimeout(() => {
+        agregarBotonEliminarTodo();
+        agregarBotonesImportExport();
         agregarEventListeners();
     }, 100);
+    
+    console.log('✅ Aplicación inicializada completamente');
 });
 
 // Agregar event listeners después de cada renderizado
